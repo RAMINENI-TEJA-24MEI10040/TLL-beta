@@ -1913,8 +1913,11 @@ const LoginPage = ({onLogin}) => {
 /* ============================================================
    LANDING PAGE
 ============================================================ */
+
 const LandingPage = ({ onNavigate }) => {
   const [lightMode, setLightMode] = useState(false);
+  const [activeLang, setActiveLang] = useState('node');
+
   const lp = {
     bg:        lightMode ? '#f8fafc' : '#0b0f19',
     textMain:  lightMode ? '#0f172a' : '#ffffff',
@@ -1925,24 +1928,48 @@ const LandingPage = ({ onNavigate }) => {
     badgeBg:   lightMode ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.1)',
     shadow:    lightMode ? '0 10px 30px -10px rgba(0,0,0,0.05)' : '0 10px 30px -10px rgba(0,0,0,0.3)',
   };
+
   const btnP   = { padding:'12px 24px', borderRadius:8, fontWeight:600, fontSize:'0.95rem', cursor:'pointer', background:lp.accent, color:'#fff', border:'none', transition:'all .3s' };
   const btnO   = { padding:'12px 24px', borderRadius:8, fontWeight:600, fontSize:'0.95rem', cursor:'pointer', background:'transparent', color:lp.textMain, border:`1px solid ${lp.border}`, transition:'all .3s' };
   const btnLP  = { padding:'12px 24px', borderRadius:8, fontWeight:700, fontSize:'0.95rem', cursor:'pointer', background:'transparent', color:lp.accent, border:`2px solid ${lp.accent}`, transition:'all .3s' };
-  const card   = { background:lp.surface, padding:'40px 32px', borderRadius:24, border:`1px solid ${lp.border}`, boxShadow:lp.shadow, display:'flex', flexDirection:'column', transition:'transform .3s' };
+  const card   = { background:lp.surface, padding:'40px 32px', borderRadius:24, border:`1px solid ${lp.border}`, boxShadow:lp.shadow, display:'flex', flexDirection:'column', transition:'all .3s' };
   const icon   = { width:48, height:48, background:lp.badgeBg, borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:24, color:lp.accent };
   const grid3  = { display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))', gap:32 };
-  const h2s    = { fontSize:'2.5rem', marginBottom:16, background: lightMode?'linear-gradient(to right,#0f172a,#334155)':'linear-gradient(to right,#fff,#94a3b8)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' };
+  const h2s = { 
+  fontSize: '2.5rem', 
+  marginBottom: 16, 
+  color: lightMode ? '#0f172a' : '#ffffff', 
+  fontWeight: 800,
+  letterSpacing: '-0.025em',
+  transition: 'color .3s ease' 
+};
+    
+
+  // Generated review data structure with clean minimalist key names
+  const reviews = [
+    { n: 'Alex Miller', r: 'Backend Lead', t: 'Saved us from a major credential stuffing attack on day two. Literally plug and play setup.', a: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces' },
+    { n: 'Devon King', r: 'Security Architect', t: 'Minimalist configuration rules that actually deliver. The telemetry monitoring overhead is practically zero.', a: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=faces' },
+    { n: 'Sarah Lin', r: 'CTO @ Nexus', t: 'Finally an SDK framework that doesn’t bloat our runtime compilation or dependencies tree. 10/10 layer.', a: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=faces' },
+    { n: 'Jay Ram', r: 'Fullstack Engineer', t: 'The automatic DDoS traffic throttling kicked in flawlessly during our global traffic launch window.', a: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=faces' }
+  ];
 
   return (
     <div style={{ background:lp.bg, color:lp.textMain, fontFamily:"'Inter',-apple-system,sans-serif", lineHeight:1.6, overflowX:'hidden', transition:'background .3s,color .3s', minHeight:'100vh' }}>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&display=swap');
+
+h1, h2, h3, h4, .lp-au1 {
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  letter-spacing: -0.03em !important;
+}
         @keyframes lp-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
         @keyframes lp-up{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+        @keyframes lp-marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
         .lp-au{animation:lp-up .5s cubic-bezier(.22,.68,0,1.2) both}
         .lp-au1{animation:lp-up .5s cubic-bezier(.22,.68,0,1.2) .1s both}
         .lp-au2{animation:lp-up .5s cubic-bezier(.22,.68,0,1.2) .2s both}
         .lp-au3{animation:lp-up .5s cubic-bezier(.22,.68,0,1.2) .3s both}
-        .lp-card:hover{transform:translateY(-5px)!important}
+        .lp-card:hover{transform:translateY(-5px)!important; border-color:#3b82f6!important; box-shadow: 0 10px 25px -5px rgba(59,130,246,0.25)!important;}
         .lp-nav-a{color:#94a3b8;text-decoration:none;font-size:.95rem;transition:color .3s}
         .lp-nav-a:hover{color:#fff}
         .lp-doc-a{color:#3b82f6;text-decoration:none;margin-top:16px;display:inline-block;font-weight:600;transition:color .3s}
@@ -1953,6 +1980,10 @@ const LandingPage = ({ onNavigate }) => {
         .lp-btnP:hover{background:#2563eb!important;box-shadow:0 0 16px rgba(59,130,246,.45)!important}
         .lp-btnO:hover{border-color:#94a3b8!important}
         .lp-theme:hover{border-color:#fff!important;color:#fff!important}
+        .lp-footer-link{color:#94a3b8; text-decoration:none; transition:color .3s; font-size:.9rem}
+        .lp-footer-link:hover{color:#3b82f6}
+        .lp-mq-track{display:flex; gap:24px; width:max-content; animation:lp-marquee 30s linear infinite}
+        .lp-mq-container:hover .lp-mq-track{animation-play-state:paused}
       `}</style>
 
       <div style={{ maxWidth:1200, margin:'0 auto', padding:'0 24px' }}>
@@ -1990,8 +2021,8 @@ const LandingPage = ({ onNavigate }) => {
               TRUSTLAYERS-API Security
             </div>
             <h1 className="lp-au1" style={{ fontSize:'4rem', lineHeight:1.1, fontWeight:800, marginBottom:24, backgroundImage:lightMode?'linear-gradient(to right,#0f172a,#334155)':'linear-gradient(to right,#fff,#94a3b8)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text', color:'transparent' }}>
-  Stressed About APIs?
-</h1>
+              Stressed About APIs?
+            </h1>
             <p className="lp-au2" style={{ fontSize:'1.125rem', color:lp.textMuted, marginBottom:40 }}>
               Don't let vulnerable endpoints become nightmares. Monitor, protect, and scale your API infrastructure with real-time threat detection and a seamless integration made for engineers. Get protected in minutes with our universal SDK
             </p>
@@ -2001,30 +2032,12 @@ const LandingPage = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Hero Visual — split WITHOUT / WITH panel */}
-          {/* Hero Visual — Replaced with single image */}
-<div style={{ flex:1, display:'flex', justifyContent:'center', alignItems:'center', position:'relative' }}>
-  <div style={{ position:'absolute', width:300, height:300, background:lp.accent, filter:'blur(150px)', borderRadius:'50%', opacity:.12, zIndex:0 }}/>
-  
-  <div style={{ 
-    width:'100%', 
-    maxWidth:580, 
-    borderRadius:24, 
-    border:`1px solid ${lp.border}`, 
-    overflow:'hidden', 
-    boxShadow:'0 25px 50px -12px rgba(0,0,0,.5)', 
-    zIndex:1, 
-    position:'relative', 
-    animation:'lp-float 6s ease-in-out infinite' 
-  }}>
-    <img 
-  src={ww} 
-  alt="API Guardian Comparison" 
-  style={{ width: '100%', height: 'auto', display: 'block' }} 
-/>
-  
-  </div>
-</div>
+          <div style={{ flex:1, display:'flex', justifyContent:'center', alignItems:'center', position:'relative' }}>
+            <div style={{ position:'absolute', width:300, height:300, background:lp.accent, filter:'blur(150px)', borderRadius:'50%', opacity:.12, zIndex:0 }}/>
+            <div style={{ width:'100%', maxWidth:580, borderRadius:24, border:`1px solid ${lp.border}`, overflow:'hidden', boxShadow:'0 25px 50px -12px rgba(0,0,0,.5)', zIndex:1, position:'relative', animation:'lp-float 6s ease-in-out infinite' }}>
+              <img src={ww} alt="API Guardian Comparison" style={{ width: '100%', height: 'auto', display: 'block' }} />
+            </div>
+          </div>
         </main>
 
         {/* ── TRUSTED BY ── */}
@@ -2051,6 +2064,7 @@ const LandingPage = ({ onNavigate }) => {
               { icon:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, title:'Real-Time Threat Shield', desc:'Automatically block DDoS attempts, SQL injections, and malicious bot traffic before they hit your database.' },
               { icon:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, title:'Deep Usage Analytics', desc:'Track request volumes, latency drops, and error rates across all your endpoints with our beautiful dashboard.' },
               { icon:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>, title:'5-Minute Integration', desc:'No complex configurations. Drop in our SDK, grab your API key, and your infrastructure is secured instantly.' },
+              { icon:<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, title:'Instant Team Alerts', desc:'Coordinate security squads during active breaches. Set role-based rule access limits and escalate infrastructure threats via cross-team rooms.' },
             ].map((f,i)=>(
               <div key={i} className="lp-card" style={card}>
                 <div style={icon}>{f.icon}</div>
@@ -2070,21 +2084,76 @@ const LandingPage = ({ onNavigate }) => {
               <button className="lp-btnO" style={btnO}>Read the Documentation</button>
             </div>
             <div style={{ flex:1, background:'#0f172a', borderRadius:12, border:'1px solid #334155', overflow:'hidden', boxShadow:'0 25px 50px -12px rgba(0,0,0,.5)' }}>
-              <div style={{ background:'#1e293b', padding:'12px 16px', display:'flex', gap:8 }}>
-                {[['#ef4444'],[' #f59e0b'],['#10b981']].map(([c],i)=><div key={i} style={{ width:12, height:12, borderRadius:'50%', background:c }}/>)}
+              
+              <div style={{ background:'#1e293b', padding:'4px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #334155' }}>
+                <div style={{ display:'flex', gap:8 }}>
+                  {[['#ef4444'],[' #f59e0b'],['#10b981']].map(([c],i)=><div key={i} style={{ width:12, height:12, borderRadius:'50%', background:c }}/>)}
+                </div>
+                <div style={{ display:'flex', gap:4 }}>
+                  {['node', 'python', 'cpp'].map((l) => (
+                    <button 
+                      key={l}
+                      onClick={() => setActiveLang(l)}
+                      style={{
+                        background: activeLang === l ? '#0f172a' : 'transparent',
+                        border: 'none',
+                        color: activeLang === l ? '#3b82f6' : '#94a3b8',
+                        padding: '6px 12px',
+                        borderRadius: '6px 6px 0 0',
+                        fontSize: '.8rem',
+                        fontFamily: 'monospace',
+                        cursor: 'pointer',
+                        fontWeight: activeLang === l ? 600 : 400,
+                        transition: 'all .2s'
+                      }}
+                    >
+                      {l === 'node' ? 'Node.js' : l === 'python' ? 'Python' : 'C++'}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div style={{ padding:24, color:'#e2e8f0', fontFamily:'monospace', fontSize:'.9rem', lineHeight:1.5, overflowX:'auto' }}>
-                <div><span style={{color:'#c678dd'}}>import</span> {`{ Guardian }`} <span style={{color:'#c678dd'}}>from</span> <span style={{color:'#98c379'}}>'@apiguardian/node'</span>;</div>
-                <div><span style={{color:'#c678dd'}}>import</span> express <span style={{color:'#c678dd'}}>from</span> <span style={{color:'#98c379'}}>'express'</span>;</div>
-                <div style={{marginTop:12}}><span style={{color:'#c678dd'}}>const</span> app = <span style={{color:'#61afef'}}>express</span>();</div>
-                <div style={{marginTop:12,color:'#5c6370'}}>{`// Initialize with your secret key`}</div>
-                <div><span style={{color:'#c678dd'}}>const</span> guard = <span style={{color:'#c678dd'}}>new</span> <span style={{color:'#61afef'}}>Guardian</span>(<span style={{color:'#98c379'}}>'sk_live_12345'</span>);</div>
-                <div style={{marginTop:12,color:'#5c6370'}}>{`// Boom. Your app is now protected.`}</div>
-                <div>app.<span style={{color:'#61afef'}}>use</span>(guard.<span style={{color:'#61afef'}}>protect</span>());</div>
-                <div style={{marginTop:12}}>app.<span style={{color:'#61afef'}}>get</span>(<span style={{color:'#98c379'}}>'/api/data'</span>, (req, res) =&gt; {'{'}</div>
-                <div style={{paddingLeft:20}}>res.<span style={{color:'#61afef'}}>json</span>{'({'} status: <span style={{color:'#98c379'}}>'secure'</span> {'}'});</div>
-                <div>{'}'});</div>
+
+              <div style={{ padding:24, color:'#e2e8f0', fontFamily:'monospace', fontSize:'.9rem', lineHeight:1.5, overflowX:'auto', minHeight: '220px' }}>
+                {activeLang === 'node' && (
+                  <div>
+                    <div><span style={{color:'#c678dd'}}>import</span> {`{ Guardian }`} <span style={{color:'#c678dd'}}>from</span> <span style={{color:'#98c379'}}>'@apiguardian/node'</span>;</div>
+                    <div><span style={{color:'#c678dd'}}>import</span> express <span style={{color:'#c678dd'}}>from</span> <span style={{color:'#98c379'}}>'express'</span>;</div>
+                    <div style={{marginTop:12}}><span style={{color:'#c678dd'}}>const</span> a = <span style={{color:'#61afef'}}>express</span>();</div>
+                    <div><span style={{color:'#c678dd'}}>const</span> g = <span style={{color:'#c678dd'}}>new</span> <span style={{color:'#61afef'}}>Guardian</span>(<span style={{color:'#98c379'}}>'sk_live_123'</span>);</div>
+                    <div style={{marginTop:12,color:'#5c6370'}}>{`// Secure setup`}</div>
+                    <div>a.<span style={{color:'#61afef'}}>use</span>(g.<span style={{color:'#61afef'}}>protect</span>());</div>
+                    <div>a.<span style={{color:'#61afef'}}>get</span>(<span style={{color:'#98c379'}}>'/api'</span>, (q, r) =&gt; r.<span style={{color:'#61afef'}}>json</span>({'{'} s: <span style={{color:'#98c379'}}>'secure'</span> {'}'}));</div>
+                  </div>
+                )}
+
+                {activeLang === 'python' && (
+                  <div>
+                    <div><span style={{color:'#c678dd'}}>from</span> apiguardian <span style={{color:'#c678dd'}}>import</span> Guardian</div>
+                    <div><span style={{color:'#c678dd'}}>from</span> flask <span style={{color:'#c678dd'}}>import</span> Flask</div>
+                    <div style={{marginTop:12}}><span style={{color:'#e5c07b'}}>a</span> = Flask(__name__)</div>
+                    <div><span style={{color:'#e5c07b'}}>g</span> = Guardian(<span style={{color:'#98c379'}}>'sk_live_123'</span>)</div>
+                    <div style={{marginTop:12,color:'#5c6370'}}>{`# Secure setup`}</div>
+                    <div><span style={{color:'#e5c07b'}}>@a.before_request</span></div>
+                    <div><span style={{color:'#c678dd'}}>def</span> <span style={{color:'#61afef'}}>p</span>(): <span style={{color:'#e5c07b'}}>g</span>.protect()</div>
+                  </div>
+                )}
+
+                {activeLang === 'cpp' && (
+                  <div>
+                    <div><span style={{color:'#c678dd'}}>#include</span> <span style={{color:'#98c379'}}>"apiguardian.h"</span></div>
+                    <div><span style={{color:'#c678dd'}}>#include</span> <span style={{color:'#98c379'}}>"crow.h"</span></div>
+                    <div style={{marginTop:12}}><span style={{color:'#c678dd'}}>int</span> <span style={{color:'#61afef'}}>main</span>() {'{'}</div>
+                    <div style={{paddingLeft:20}}><span style={{color:'#e5c07b'}}>crow::SimpleApp</span> a;</div>
+                    <div style={{paddingLeft:20}}><span style={{color:'#e5c07b'}}>Guardian</span> g(<span style={{color:'#98c379'}}>'sk_live_123'</span>);</div>
+                    <div style={{paddingLeft:20,marginTop:12,color:'#5c6370'}}>{`// Secure setup`}</div>
+                    <div style={{paddingLeft:20}}>a.route_dynamic(<span style={{color:'#98c379'}}>"/api"</span>)([&amp;g]() {'{'}</div>
+                    <div style={{paddingLeft:40}}>g.protect(); <span style={{color:'#c678dd'}}>return</span> <span style={{color:'#98c379'}}>{`"{\\"s\\":\\"ok\\"}"`}</span>;</div>
+                    <div style={{paddingLeft:20}}>{`});`}</div>
+                    <div>{'}'}</div>
+                  </div>
+                )}
               </div>
+
             </div>
           </div>
         </section>
@@ -2120,7 +2189,7 @@ const LandingPage = ({ onNavigate }) => {
           <div style={grid3}>
             {[
               { name:'Starter', price:'$0',   per:'/mo', desc:'Perfect for side projects and testing environments.', features:['100,000 API requests/mo','Basic DDoS protection','Community support','7-day log retention'], cta:'Get Started', primary:false },
-              { name:'Pro',     price:'$49',  per:'/mo', desc:'For growing startups and production APIs.',           features:['10,000,000 API requests/mo','Advanced threat shield','Priority email support','30-day log retention'], cta:'Start Free Trial', primary:true, popular:true },
+              { name:'Pro',     price:'$49',  per:'/mo', desc:'For growing startups and production APIs.',          features:['10,000,000 API requests/mo','Advanced threat shield','Priority email support','30-day log retention'], cta:'Start Free Trial', primary:true, popular:true },
               { name:'Enterprise', price:'Custom', per:'', desc:'For mission-critical infrastructure and scale.',   features:['Unlimited API requests','Custom WAF rules','24/7 dedicated support SLA','Infinite log retention'], cta:'Contact Sales', primary:false },
             ].map((p,i)=>(
               <div key={i} className={`lp-card${p.popular?' lp-popular':''}`} style={{ ...card, ...(p.popular?{borderColor:lp.accent}:{}) }}>
@@ -2142,7 +2211,6 @@ const LandingPage = ({ onNavigate }) => {
         </section>
 
         {/* ── DEEP DIVE ROWS ── */}
-      {/* ── DEEP DIVE ROWS ── */}
         <section style={{ padding:'0 0 80px' }}>
           {[
             { 
@@ -2162,7 +2230,6 @@ const LandingPage = ({ onNavigate }) => {
           ].map((row, i) => (
             <div key={i} style={{ display:'flex', alignItems:'center', gap:60, marginBottom:100, flexDirection:row.rev?'row-reverse':'row' }}>
               
-              {/* Text Component */}
               <div style={{ flex:1 }}>
                 <h2 style={{ ...h2s, fontSize:'2rem', marginBottom:16 }}>{row.title}</h2>
                 <p style={{ color:lp.textMuted, fontSize:'1.05rem', marginBottom:24 }}>{row.desc}</p>
@@ -2173,7 +2240,6 @@ const LandingPage = ({ onNavigate }) => {
                 </ul>
               </div>
 
-              {/* Image Component */}
               <div style={{ flex:1, background:lp.surface, border:`1px solid ${lp.border}`, borderRadius:24, height:380, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', boxShadow:lp.shadow }}>
                 <img 
                   src={row.image} 
@@ -2184,6 +2250,53 @@ const LandingPage = ({ onNavigate }) => {
               
             </div>
           ))}
+        </section>
+
+        {/* ── INFINITE SCROLLING REVIEWS TRACK ── */}
+        <section style={{ padding:'0 0 60px', overflow:'hidden' }}>
+          <div style={{ textAlign:'center', marginBottom:40 }}>
+            <p style={{ color:lp.accent, fontSize:'.85rem', textTransform:'uppercase', letterSpacing:1.5, fontWeight:700, marginBottom:8 }}>Developer Testimonials</p>
+            <h2 style={{ ...h2s, fontSize:'2rem' }}>Approved by Engineers</h2>
+          </div>
+          
+          <div className="lp-mq-container" style={{ width:'100%', overflow:'hidden', position:'relative', padding:'10px 0' }}>
+            {/* Left and Right Fade Overlays for Depth */}
+            <div style={{ position:'absolute', left:0, top:0, bottom:0, width:80, background:`linear-gradient(to right, ${lp.bg}, transparent)`, zIndex:3, pointerEvents:'none' }}/>
+            <div style={{ position:'absolute', right:0, top:0, bottom:0, width:80, background:`linear-gradient(to left, ${lp.bg}, transparent)`, zIndex:3, pointerEvents:'none' }}/>
+            
+            {/* Double mapped reviews to form a seamless infinite sequence loop */}
+            <div className="lp-mq-track">
+              {[...reviews, ...reviews].map((r, i) => (
+                <div key={i} style={{ 
+                  background: lp.surface, 
+                  border: `1px solid ${lp.border}`, 
+                  borderRadius: 16, 
+                  padding: '24px', 
+                  width: 320, 
+                  boxShadow: lp.shadow, 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  justify: 'space-between',
+                  gap: 16
+                }}>
+                  <p style={{ color: lp.textMuted, fontSize: '.95rem', margin: 0, fontStyle: 'italic', lineHeight: 1.5 }}>
+                    "{r.t}"
+                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <img 
+                      src={r.a} 
+                      alt={r.n} 
+                      style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${lp.accent}` }} 
+                    />
+                    <div>
+                      <h4 style={{ fontSize: '.95rem', fontWeight: 600, margin: 0, color: lp.textMain }}>{r.n}</h4>
+                      <p style={{ fontSize: '.8rem', color: lp.accent, margin: 0 }}>{r.r}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
 
         {/* ── BOTTOM CTA ── */}
@@ -2199,12 +2312,69 @@ const LandingPage = ({ onNavigate }) => {
           </div>
         </section>
 
-        {/* ── FOOTER ── */}
-        <footer style={{ padding:'40px 0', borderTop:`1px solid ${lp.border}`, display:'flex', justifyContent:'space-between', color:lp.textMuted, fontSize:'.9rem' }}>
-          <div>© 2026 API Guardian Inc. All rights reserved.</div>
-          <div style={{ display:'flex', gap:24 }}>
-            <a href="#" style={{ color:'inherit', textDecoration:'none' }}>Privacy</a>
-            <a href="#" style={{ color:'inherit', textDecoration:'none' }}>Terms</a>
+        {/* ── ROBUST MULTI-COLUMN FOOTER ── */}
+        <footer style={{ padding:'60px 0 40px', borderTop:`1px solid ${lp.border}` }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:40, marginBottom:40 }}>
+            
+            <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+              <div style={{ fontSize:'1.25rem', fontWeight:700, display:'flex', alignItems:'center', gap:8 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={lp.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                APIGuardian
+              </div>
+              <p style={{ color:lp.textMuted, fontSize:'.85rem', lineHeight:1.5 }}>
+                Real-time edge shield and telemetry monitoring built natively for development squads.
+              </p>
+            </div>
+
+            <div>
+              <h4 style={{ fontSize: '.95rem', fontWeight: 600, marginBottom: 16, color: lp.textMain }}>Product</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <a href="#lp-features" className="lp-footer-link">Features</a>
+                <a href="#" className="lp-footer-link">Integrations</a>
+                <a href="#" className="lp-footer-link">Changelog</a>
+              </div>
+            </div>
+
+            <div>
+              <h4 style={{ fontSize: '.95rem', fontWeight: 600, marginBottom: 16, color: lp.textMain }}>Resources</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <a href="#lp-docs" className="lp-footer-link">Documentation</a>
+                <a href="#" className="lp-footer-link">API Reference</a>
+                <a href="#" className="lp-footer-link">Status Page</a>
+              </div>
+            </div>
+
+            <div>
+              <h4 style={{ fontSize: '.95rem', fontWeight: 600, marginBottom: 16, color: lp.textMain }}>Company</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <a href="#" className="lp-footer-link">About Us</a>
+                <a href="#" className="lp-footer-link">Careers</a>
+                <a href="#" className="lp-footer-link">Privacy & Policy</a>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:24, borderTop:`1px solid ${lp.border}`, color:lp.textMuted, fontSize:'.9rem', flexWrap:'wrap', gap:16 }}>
+            <div>© 2026 API Guardian Inc. All rights reserved.</div>
+            <div style={{ display:'flex', gap:20, alignItems:'center' }}>
+              
+              <a href="#" className="lp-footer-link" aria-label="GitHub" style={{ display:'flex', alignItems:'center' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                </svg>
+              </a>
+
+              <a href="#" className="lp-footer-link" aria-label="LinkedIn" style={{ display:'flex', alignItems:'center' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                  <rect x="2" y="9" width="4" height="12"></rect>
+                  <circle cx="4" cy="4" r="2"></circle>
+                </svg>
+              </a>
+
+            </div>
           </div>
         </footer>
 
@@ -2212,6 +2382,7 @@ const LandingPage = ({ onNavigate }) => {
     </div>
   );
 };
+
 
 /* ============================================================
    ROOT APP
