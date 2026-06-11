@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { apiClient } from "./lib/apiClient";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
@@ -500,27 +501,26 @@ const AIModal = ({title,icon,prompt,close}) => {
    SCAN MODAL
 ============================================================ */
 const ScanModal = ({close,setToast}) => {
-  const [target,setTarget]=useState('pawsitive-diagnosis-api');
-  const [step,setStep]=useState(0);
-  const [logs,setLogs]=useState([]);
-  const [started,setStarted]=useState(false);
-  const logRef=useRef(null);
-  const steps=['Initializing Nuclei engine…','Fetching OpenAPI 3.0 schema…','Running OWASP Top 10 heuristics…','Testing BOLA / IDOR boundaries…','Simulating payload injection…','Checking JWT leaks & misconfigs…','Compiling threat report…'];
-  const done=step===steps.length;
+  const [targets, setTargets] = useState([]);
+  const [targetId, setTargetId] = useState(null);
+  const [loading, setLoading] = useState(false);
+  
+  useEffect(() => {
+    apiClient.getTargets().then(setTargets).catch(err => setToast(err.message));
+  }, []);
 
-  const start=()=>{setStarted(true);setLogs([]);setStep(0);};
-  useEffect(()=>{
-    if(!started)return;
-    let i=0;
-    const t=setInterval(()=>{
-      if(i<steps.length){
-        const ts=new Date().toISOString().split('T')[1].slice(0,12);
-        setLogs(p=>[...p,`[${ts}] ${steps[i]}`]);setStep(i+1);i++;
-      } else {clearInterval(t);setLogs(p=>[...p,'[SUCCESS] Scan complete — 3 vulnerabilities found.']);setToast('Scan completed!');}
-    },780);
-    return()=>clearInterval(t);
-  },[started]);
-  useEffect(()=>{if(logRef.current)logRef.current.scrollTop=logRef.current.scrollHeight;},[logs]);
+  const start = async () => {
+    if (!targetId) return;
+    setLoading(true);
+    try {
+      await apiClient.triggerScan(targetId);
+      setToast('Scan completed!');
+      close();
+    } catch (err) {
+      setToast('Scan failed: ' + err.message);
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&close()}>
@@ -529,46 +529,33 @@ const ScanModal = ({close,setToast}) => {
           <div style={{display:'flex',alignItems:'center',gap:13}}>
             <div style={{width:42,height:42,borderRadius:14,background:'var(--p-dim)',color:'var(--p)',display:'flex',alignItems:'center',justifyContent:'center'}}><IcTerminal s={20}/></div>
             <div>
-              <div style={{fontSize:16,fontWeight:800,fontFamily:'var(--display)'}}>Security Scan</div>
-              <div style={{fontSize:12,color:'var(--t3)',fontFamily:'var(--mono)',marginTop:2}}>Target: {target}</div>
+              <div style={{fontSize:16,fontWeight:800,fontFamily:'var(--display)'}}>Trigger Security Scan</div>
+              <div style={{fontSize:12,color:'var(--t3)',fontFamily:'var(--mono)',marginTop:2}}>Run Active Security Monitoring Engine</div>
             </div>
           </div>
           <button className="btn-icon" onClick={close}><IcX s={15}/></button>
         </div>
         <div style={{padding:28}}>
-          {!started&&(
+          {!loading ? (
             <div style={{marginBottom:22}}>
-              <div className="sec-label">Select Target</div>
+              <div className="sec-label">Select Target to Scan</div>
               <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                {REPOS.map(r=>(
-                  <button key={r.n} onClick={()=>setTarget(r.n)} style={{padding:'6px 14px',borderRadius:'var(--r-pill)',fontSize:12,fontWeight:600,background:target===r.n?'var(--p-dim)':'var(--surface2)',color:target===r.n?'var(--p-lite)':'var(--t2)',border:`1px solid ${target===r.n?'var(--p)':'var(--border)'}`}}>
-                    {r.n}
+                {targets.map(r=>(
+                  <button key={r.id} onClick={()=>setTargetId(r.id)} style={{padding:'6px 14px',borderRadius:'var(--r-pill)',fontSize:12,fontWeight:600,background:targetId===r.id?'var(--p-dim)':'var(--surface2)',color:targetId===r.id?'var(--p-lite)':'var(--t2)',border:`1px solid ${targetId===r.id?'var(--p)':'var(--border)'}`}}>
+                    {r.name || r.url}
                   </button>
                 ))}
               </div>
             </div>
-          )}
-          {started&&(
-            <div style={{marginBottom:18}}>
-              <div style={{display:'flex',justifyContent:'space-between',marginBottom:7,fontSize:12,fontWeight:700,fontFamily:'var(--mono)'}}>
-                <span style={{color:'var(--p)'}}>PROGRESS</span>
-                <span>{Math.round((step/steps.length)*100)}%</span>
-              </div>
-              <div className="progress-track">
-                <div className="progress-fill" style={{width:`${(step/steps.length)*100}%`,background:'var(--p)',boxShadow:'var(--p-glow)'}}/>
-              </div>
-            </div>
-          )}
-          {started&&(
-            <div ref={logRef} style={{background:'#080c12',borderRadius:16,padding:18,height:210,overflowY:'auto',border:'1px solid var(--border)',fontFamily:'var(--mono)',fontSize:12,lineHeight:1.9,display:'flex',flexDirection:'column',gap:3}}>
-              {logs.map((l,i)=><div key={i} className="term-line" style={{color:l.includes('SUCCESS')?'var(--green)':'#8899aa'}}>{l}</div>)}
-              {started&&!done&&<div style={{color:'var(--p)',display:'flex',alignItems:'center',gap:8}}><span style={{animation:'pulse .9s infinite'}}>█</span>Scanning…</div>}
+          ) : (
+            <div style={{textAlign:'center', padding:40, color:'var(--p)'}}>
+              <Spinner s={32}/>
+              <div style={{marginTop:16, fontSize:14, fontWeight:600}}>Scan in progress... Please wait.</div>
             </div>
           )}
           <div style={{display:'flex',gap:12,marginTop:20}}>
-            {!started&&<button className="btn-primary" onClick={start} style={{flex:1,justifyContent:'center',height:44}}><IcPlay s={14}/>Start Scan</button>}
-            {done&&<button className="btn-primary" onClick={close} style={{flex:1,justifyContent:'center',height:44}}><IcEye s={14}/>View Full Report</button>}
-            <button className="btn-ghost" onClick={close} style={{height:44,padding:'0 24px'}}>Close</button>
+            {!loading && <button className="btn-primary" disabled={!targetId} onClick={start} style={{flex:1,justifyContent:'center',height:44}}><IcPlay s={14}/>Start Scan</button>}
+            <button className="btn-ghost" onClick={close} style={{flex:1, height:44}}>Close</button>
           </div>
         </div>
       </div>
@@ -718,88 +705,78 @@ const OpenAPIModal = ({close,setToast}) => {
    LOAD TESTING MODAL
 ============================================================ */
 const LoadTestModal = ({close,setToast}) => {
-  const [users,setUsers]=useState(100);
-  const [target,setTarget]=useState('/api/v1/health');
-  const [running,setRunning]=useState(false);
-  const [done,setDone]=useState(false);
-  const [progress,setProgress]=useState(0);
+  const [mode, setMode] = useState('bola');
+  const [url, setUrl] = useState('http://localhost:3000/api/users/123');
+  const [token1, setToken1] = useState('');
+  const [token2, setToken2] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState(null);
 
-  const run=()=>{
-    setRunning(true);setProgress(0);setDone(false);
-    let p=0;
-    const t=setInterval(()=>{
-      p+=10;setProgress(p);
-      if(p>=100){clearInterval(t);setRunning(false);setDone(true);setToast(`Load test (${users} users) complete!`);}
-    },300);
+  const runTest = async () => {
+    setLoading(true); setResults(null);
+    try {
+      if (mode === 'bola') {
+        const data = await apiClient.runBolaCheck(url, token1);
+        setResults(data);
+        setToast('BOLA Check Complete');
+      } else {
+        const data = await apiClient.runRbacCheck(url, [token1, token2]);
+        setResults(data);
+        setToast('RBAC Check Complete');
+      }
+    } catch(err) {
+      setToast('Test Failed: ' + err.message);
+    }
+    setLoading(false);
   };
-
-  const data=LOAD_DATA[users===100?100:1000];
 
   return (
     <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&close()}>
-      <div className="modal" style={{maxWidth:680}}>
+      <div className="modal" style={{maxWidth:600}}>
         <div style={{padding:'22px 28px',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <div style={{fontSize:16,fontWeight:800,fontFamily:'var(--display)'}}>Load Testing</div>
+          <div style={{fontSize:16,fontWeight:800,fontFamily:'var(--display)'}}>Advanced Security Tests</div>
           <button className="btn-icon" onClick={close}><IcX s={15}/></button>
         </div>
         <div style={{padding:28}}>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:22}}>
-            <div>
-              <div className="sec-label">Target Endpoint</div>
-              <input className="login-input" value={target} onChange={e=>setTarget(e.target.value)} style={{width:'100%'}}/>
-            </div>
-            <div>
-              <div className="sec-label">Virtual Users</div>
-              <div style={{display:'flex',gap:8}}>
-                {[100,1000].map(u=>(
-                  <button key={u} onClick={()=>setUsers(u)} style={{flex:1,height:44,borderRadius:'var(--r-lg)',fontSize:13,fontWeight:700,background:users===u?'var(--p-dim)':'var(--surface2)',color:users===u?'var(--p-lite)':'var(--t2)',border:`1px solid ${users===u?'var(--p)':'var(--border)'}`}}>
-                    {u.toLocaleString()} users
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div style={{display:'flex',gap:10,marginBottom:20}}>
+            <button className={mode==='bola'?'btn-primary':'btn-ghost'} onClick={()=>setMode('bola')}>BOLA Tester</button>
+            <button className={mode==='rbac'?'btn-primary':'btn-ghost'} onClick={()=>setMode('rbac')}>RBAC Token Swapper</button>
           </div>
-          {(running||done)&&(
-            <>
-              <div style={{marginBottom:16}}>
-                <div style={{display:'flex',justifyContent:'space-between',marginBottom:6,fontSize:12,fontWeight:700,fontFamily:'var(--mono)'}}>
-                  <span style={{color:'var(--p)'}}>RUNNING {users} VIRTUAL USERS</span>
-                  <span>{progress}%</span>
-                </div>
-                <div className="progress-track">
-                  <div className="progress-fill" style={{width:`${progress}%`,background:'var(--p)'}}/>
-                </div>
-              </div>
-              {done&&(
-                <>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
-                    {[{l:'Avg RPS',v:data.reduce((a,b)=>a+b.rps,0)/data.length|0,c:'var(--green)'},{l:'Avg Latency',v:(data.reduce((a,b)=>a+b.latency,0)/data.length|0)+'ms',c:'var(--blue)'},{l:'Total Errors',v:data.reduce((a,b)=>a+b.errors,0),c:'var(--red)'}].map(x=>(
-                      <div key={x.l} className="card-sm" style={{textAlign:'center'}}>
-                        <div style={{fontSize:22,fontWeight:800,fontFamily:'var(--mono)',color:x.c}}>{x.v}</div>
-                        <div style={{fontSize:11,color:'var(--t3)',marginTop:3}}>{x.l}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{height:160}}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={data} margin={{top:0,right:0,left:-20,bottom:0}}>
-                        <XAxis dataKey="t" axisLine={false} tickLine={false} tick={{fill:'var(--t3)',fontSize:10}}/>
-                        <YAxis axisLine={false} tickLine={false} tick={{fill:'var(--t3)',fontSize:10}}/>
-                        <Tooltip content={<ChartTip/>}/>
-                        <Bar dataKey="rps" fill="var(--p)" opacity={.7} radius={[3,3,0,0]} barSize={12} name="RPS"/>
-                        <Line type="monotone" dataKey="latency" stroke="var(--orange)" strokeWidth={2} dot={false} name="Latency(ms)"/>
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                  </div>
-                </>
-              )}
-            </>
+          
+          <div style={{marginBottom:15}}>
+            <div className="sec-label">Target URL</div>
+            <input className="login-input" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://api.example.com/users/123" />
+          </div>
+
+          <div style={{marginBottom:15}}>
+            <div className="sec-label">Auth Token {mode==='rbac'?'1 (Admin)':''}</div>
+            <input className="login-input" value={token1} onChange={e=>setToken1(e.target.value)} placeholder="Bearer eyJhbGci..." />
+          </div>
+
+          {mode === 'rbac' && (
+            <div style={{marginBottom:20}}>
+              <div className="sec-label">Auth Token 2 (User)</div>
+              <input className="login-input" value={token2} onChange={e=>setToken2(e.target.value)} placeholder="Bearer eyJhbGci..." />
+            </div>
           )}
-          <div style={{display:'flex',gap:12,marginTop:20}}>
-            <button className="btn-primary" onClick={run} disabled={running} style={{flex:1,justifyContent:'center',height:44}}>
-              {running?<><Spinner s={15}/>Running…</>:<><IcZap s={14}/>Start Load Test</>}
-            </button>
-            <button className="btn-ghost" onClick={close} style={{height:44,padding:'0 24px'}}>Close</button>
+
+          {loading && <div style={{textAlign:'center', padding:20, color:'var(--p)'}}><Spinner s={24}/> Running tests...</div>}
+
+          {results && (
+            <div style={{background:'var(--surface2)', padding:16, borderRadius:12, marginTop:20}}>
+              <div style={{fontSize:14, fontWeight:700, marginBottom:10}}>Test Results:</div>
+              {results.findings?.map((f,i) => (
+                 <div key={i} style={{marginBottom:10, paddingBottom:10, borderBottom:'1px solid var(--border)'}}>
+                   <Tag s={f.severity==='CRITICAL'?'crit':'high'}/> <span style={{fontWeight:600}}>{f.title}</span>
+                   <div style={{fontSize:12, marginTop:4, color:'var(--t2)'}}>{f.description}</div>
+                 </div>
+              ))}
+              {!results.findings?.length && <div style={{color:'var(--green)', fontWeight:600}}>No vulnerabilities found!</div>}
+            </div>
+          )}
+
+          <div style={{display:'flex',gap:12,marginTop:24}}>
+            <button className="btn-primary" onClick={runTest} style={{flex:1,height:44}}>Run Test</button>
           </div>
         </div>
       </div>
@@ -811,53 +788,55 @@ const LoadTestModal = ({close,setToast}) => {
    MOCK SERVER MODAL
 ============================================================ */
 const MockServerModal = ({close,setToast}) => {
-  const [gen,setGen]=useState(false);
-  const [ready,setReady]=useState(false);
-  const [port,setPort]=useState('3001');
-  const PORT_URL=`http://localhost:${port}`;
+  const [token, setToken] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState(null);
 
-  const generate=()=>{
-    setGen(true);
-    setTimeout(()=>{setGen(false);setReady(true);setToast('Mock server is live on port '+port+'!');},2000);
+  const runTest = async () => {
+    if (!token) return;
+    setLoading(true); setResults(null);
+    try {
+      const data = await apiClient.analyzeJwt(token);
+      setResults(data);
+      setToast('JWT Analysis Complete');
+    } catch(err) {
+      setToast('Analysis Failed: ' + err.message);
+    }
+    setLoading(false);
   };
 
   return (
     <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&close()}>
-      <div className="modal" style={{maxWidth:560}}>
+      <div className="modal" style={{maxWidth:600}}>
         <div style={{padding:'22px 28px',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <div style={{fontSize:16,fontWeight:800,fontFamily:'var(--display)'}}>API Mock Server</div>
+          <div style={{fontSize:16,fontWeight:800,fontFamily:'var(--display)'}}>JWT Security Analyzer</div>
           <button className="btn-icon" onClick={close}><IcX s={15}/></button>
         </div>
         <div style={{padding:28}}>
-          <div style={{marginBottom:20,padding:16,borderRadius:'var(--r-lg)',background:'var(--p-dim2)',border:'1px solid var(--p-dim)',fontSize:13,color:'var(--t2)',lineHeight:1.6}}>
-            Generate a fully working mock server from your imported OpenAPI spec. Perfect for frontend dev & integration testing.
+          
+          <div style={{marginBottom:15}}>
+            <div className="sec-label">Paste JWT Token</div>
+            <textarea className="login-input" value={token} onChange={e=>setToken(e.target.value)} placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style={{height:100, resize:'vertical'}} />
           </div>
-          <div style={{marginBottom:20}}>
-            <div className="sec-label">Port</div>
-            <input className="login-input" value={port} onChange={e=>setPort(e.target.value)} style={{width:120}}/>
-          </div>
-          {ready&&(
-            <div style={{marginBottom:20}}>
-              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
-                <span className="dot" style={{background:'var(--green)',boxShadow:'0 0 8px var(--green)'}}/>
-                <span style={{fontSize:13,fontWeight:700,color:'var(--green)'}}>Mock server running at {PORT_URL}</span>
-              </div>
-              {MOCK_ENDPOINTS_SPEC.slice(0,5).map((e,i)=>(
-                <div key={i} className="card-sm" style={{display:'flex',gap:10,alignItems:'center',marginBottom:8,padding:'10px 14px'}}>
-                  <span className={`method method-${e.m}`}>{e.m}</span>
-                  <code style={{fontFamily:'var(--mono)',fontSize:12,color:'var(--t1)',flex:1}}>{PORT_URL}{e.p}</code>
-                  <button className="btn-icon" style={{width:26,height:26}} onClick={()=>{navigator.clipboard?.writeText(PORT_URL+e.p);setToast('Copied!');}}>
-                    <IcCopy s={11}/>
-                  </button>
-                </div>
+
+          {loading && <div style={{textAlign:'center', padding:20, color:'var(--p)'}}><Spinner s={24}/> Analyzing claims & signature...</div>}
+
+          {results && (
+            <div style={{background:'var(--surface2)', padding:16, borderRadius:12, marginTop:20}}>
+              <div style={{fontSize:14, fontWeight:700, marginBottom:10}}>Analysis Results — Risk Score: {results.risk_score}/100</div>
+              {results.findings?.map((f,i) => (
+                 <div key={i} style={{marginBottom:10, paddingBottom:10, borderBottom:'1px solid var(--border)'}}>
+                   <Tag s={f.severity==='CRITICAL'?'crit':f.severity==='HIGH'?'high':'med'}/> <span style={{fontWeight:600}}>{f.title}</span>
+                   <div style={{fontSize:12, marginTop:4, color:'var(--t2)'}}>{f.description}</div>
+                   <div style={{fontSize:11, marginTop:4, color:'var(--p)'}}>Remediation: {f.remediation}</div>
+                 </div>
               ))}
+              {!results.findings?.length && <div style={{color:'var(--green)', fontWeight:600}}>Token appears secure!</div>}
             </div>
           )}
-          <div style={{display:'flex',gap:12}}>
-            <button className="btn-primary" onClick={generate} disabled={gen} style={{flex:1,justifyContent:'center',height:44}}>
-              {gen?<><Spinner s={15}/>Generating…</>:<><IcServer s={14}/>{ready?'Restart Server':'Generate Mock Server'}</>}
-            </button>
-            <button className="btn-ghost" onClick={close} style={{height:44,padding:'0 24px'}}>Close</button>
+
+          <div style={{display:'flex',gap:12,marginTop:24}}>
+            <button className="btn-primary" onClick={runTest} style={{flex:1,height:44}}>Analyze Token</button>
           </div>
         </div>
       </div>
@@ -868,7 +847,25 @@ const MockServerModal = ({close,setToast}) => {
 /* ============================================================
    VIEW: DASHBOARD
 ============================================================ */
-const ViewDashboard = ({setToast,openModal}) => (
+const ViewDashboard = ({setToast,openModal}) => {
+  const [targets, setTargets] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient.getTargets()
+      .then(data => { setTargets(data); setLoading(false); })
+      .catch(err => { setToast(err.message); setLoading(false); });
+  }, []);
+
+  if (loading) return <div style={{display:'flex',justifyContent:'center',padding:60}}><Spinner s={30}/></div>;
+
+  const totalScanned = targets.length;
+  // Calculate average score
+  const avgScore = totalScanned ? Math.round(targets.reduce((acc, t) => acc + (t.security_score || 0), 0) / totalScanned) : 0;
+  // For the Pie Chart
+  const pieData = [{v:avgScore}, {v:100-avgScore}];
+
+  return (
   <div style={{display:'flex',flexDirection:'column',gap:22}}>
     {/* Greeting */}
     <div className="au" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
@@ -889,10 +886,8 @@ const ViewDashboard = ({setToast,openModal}) => (
     {/* Stat cards */}
     <div className="au1" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
       {[
-        {label:'APIs Scanned',  val:'1,284', delta:'+12%', deltaGood:true,  color:'var(--p)',    icon:<IcGlobe s={16}/>,   prog:78},
-        {label:'Critical Threats',val:'23',  delta:'-8%',  deltaGood:true,  color:'var(--red)',  icon:<IcAlert s={16}/>,   prog:23},
-        {label:'Security Score',val:'94%',   delta:'+2.1%',deltaGood:true,  color:'var(--green)',icon:<IcShield s={16}/>,  prog:94},
-        {label:'Live Pipelines',val:'17',    delta:'+3',   deltaGood:true,  color:'var(--purple)',icon:<IcPipeline s={16}/>,prog:65},
+        {label:'APIs Monitored',  val:totalScanned, delta:'Active', deltaGood:true,  color:'var(--p)',    icon:<IcGlobe s={16}/>,   prog:100},
+        {label:'Avg Security',val:avgScore+'%',   delta:'Live',deltaGood:true,  color:'var(--green)',icon:<IcShield s={16}/>,  prog:avgScore},
       ].map((c,i)=>(
         <div key={i} className="card">
           <div style={{position:'absolute',top:-20,right:-20,width:100,height:100,background:c.color,borderRadius:'50%',filter:'blur(40px)',opacity:.14,pointerEvents:'none'}}/>
@@ -903,7 +898,7 @@ const ViewDashboard = ({setToast,openModal}) => (
           <div style={{fontSize:36,fontWeight:800,fontFamily:'var(--display)',letterSpacing:'-1.5px',color:c.color,marginBottom:10}}>{c.val}</div>
           <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
             <span style={{background:`${c.color}22`,color:c.color,padding:'2px 8px',borderRadius:5,fontSize:11,fontWeight:700}}>{c.delta}</span>
-            <span style={{fontSize:11,color:'var(--t3)'}}>vs last month</span>
+            <span style={{fontSize:11,color:'var(--t3)'}}>status</span>
           </div>
           <div className="progress-track"><div className="progress-fill" style={{width:`${c.prog}%`,background:c.color}}/></div>
         </div>
@@ -911,210 +906,169 @@ const ViewDashboard = ({setToast,openModal}) => (
     </div>
 
     {/* Charts row */}
-    <div className="au2" style={{display:'grid',gridTemplateColumns:'1.7fr 1fr',gap:16}}>
-      <div className="card">
-        <SectionHeader title="Scan Activity Overview" subtitle="+5 more this year vs 2024"
-          action={<div style={{display:'flex',gap:14}}>{[{c:'var(--p)',l:'Scans'},{c:'var(--red)',l:'Issues'},{c:'var(--green)',l:'Resolved'}].map(x=>(
-            <div key={x.l} style={{display:'flex',alignItems:'center',gap:6,fontSize:11,fontWeight:600,color:'var(--t2)'}}>
-              <span style={{width:8,height:8,borderRadius:2,background:x.c,display:'inline-block'}}/>{x.l}
-            </div>))}</div>}/>
-        <div style={{height:230}}>
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={SCAN_DATA} margin={{top:5,right:0,left:-20,bottom:0}}>
-              <defs>
-                <linearGradient id="gScan" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--p)" stopOpacity={0.3}/><stop offset="100%" stopColor="var(--p)" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="m" axisLine={false} tickLine={false} tick={{fill:'var(--t3)',fontSize:11,fontFamily:'var(--mono)'}} dy={8}/>
-              <YAxis axisLine={false} tickLine={false} tick={{fill:'var(--t3)',fontSize:11,fontFamily:'var(--mono)'}}/>
-              <Tooltip content={<ChartTip/>} cursor={{fill:'var(--surface2)',opacity:.5}}/>
-              <Bar dataKey="issues" fill="var(--red)" opacity={.45} radius={[3,3,0,0]} barSize={12} name="Issues"/>
-              <Area type="monotone" dataKey="scans" stroke="var(--p)" strokeWidth={2.5} fill="url(#gScan)" name="Scans"/>
-              <Line type="monotone" dataKey="resolved" stroke="var(--green)" strokeWidth={2} dot={false} name="Resolved"/>
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+    <div className="au2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
       <div className="card" style={{display:'flex',flexDirection:'column'}}>
-        <SectionHeader title="Security Score" subtitle="Last 30 days"/>
+        <SectionHeader title="Security Score Average" subtitle="Across all targets"/>
         <div style={{display:'flex',justifyContent:'center',marginBottom:16}}>
           <div style={{width:160,height:160,position:'relative'}}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={[{v:94},{v:6}]} cx="50%" cy="50%" innerRadius={56} outerRadius={72} dataKey="v" stroke="none" startAngle={90} endAngle={-270}>
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={56} outerRadius={72} dataKey="v" stroke="none" startAngle={90} endAngle={-270}>
                   <Cell fill="var(--green)" style={{filter:'drop-shadow(0 0 8px var(--green))'}}/>
                   <Cell fill="var(--surface3)"/>
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
             <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
-              <span style={{fontSize:30,fontWeight:800,fontFamily:'var(--display)',color:'var(--t1)'}}>94<span style={{fontSize:16}}>%</span></span>
-              <span style={{fontSize:11,color:'var(--green)',fontWeight:700}}>Excellent</span>
+              <span style={{fontSize:30,fontWeight:800,fontFamily:'var(--display)',color:'var(--t1)'}}>{avgScore}<span style={{fontSize:16}}>%</span></span>
+              <span style={{fontSize:11,color:'var(--green)',fontWeight:700}}>{avgScore > 80 ? 'Excellent' : 'Needs Work'}</span>
             </div>
           </div>
         </div>
-        <div style={{display:'flex',flexDirection:'column',gap:10,flex:1}}>
-          {[{label:'Authentication',val:96,c:'var(--green)'},{label:'Injection Guards',val:91,c:'var(--p)'},{label:'Data Exposure',val:88,c:'var(--orange)'},{label:'Rate Limiting',val:74,c:'var(--blue)'}].map(x=>(
-            <ProgressBar key={x.label} val={x.val} color={x.c} label={x.label} sub={`${x.val}%`}/>
-          ))}
-        </div>
-      </div>
-    </div>
-
-    {/* Threat breakdown + Radar + Calendar */}
-    <div className="au3" style={{display:'grid',gridTemplateColumns:'1fr 1fr 0.8fr',gap:16}}>
-      <div className="card">
-        <SectionHeader title="Threat Breakdown"/>
-        <div style={{height:160,marginBottom:12}}>
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={PIE_THREATS} cx="50%" cy="50%" outerRadius={68} dataKey="value" stroke="none">
-                {PIE_THREATS.map((e,i)=><Cell key={i} fill={e.color} opacity={.85}/>)}
-              </Pie>
-              <Tooltip content={<ChartTip/>}/>
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        <div style={{display:'flex',flexDirection:'column',gap:7}}>
-          {PIE_THREATS.map(t=>(
-            <div key={t.name} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <span className="dot" style={{background:t.color}}/><span style={{fontSize:12,color:'var(--t2)'}}>{t.name}</span>
-              </div>
-              <span style={{fontSize:12,fontWeight:700,fontFamily:'var(--mono)',color:'var(--t1)'}}>{t.value}%</span>
-            </div>
-          ))}
-        </div>
       </div>
       <div className="card">
-        <SectionHeader title="Security Radar"/>
-        <div style={{height:220}}>
-          <ResponsiveContainer width="100%" height="100%">
-            <RadarChart data={RADAR_DATA} margin={{top:10,right:20,left:20,bottom:10}}>
-              <PolarGrid stroke="var(--border)"/>
-              <PolarAngleAxis dataKey="subject" tick={{fill:'var(--t3)',fontSize:11,fontFamily:'var(--mono)'}}/>
-              <Radar name="Current" dataKey="A" stroke="var(--p)" fill="var(--p)" fillOpacity={0.2} strokeWidth={2}/>
-              <Radar name="Baseline" dataKey="B" stroke="var(--t3)" fill="var(--t3)" fillOpacity={0.08} strokeWidth={1.5}/>
-              <Tooltip content={<ChartTip/>}/>
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-      <div className="card">
-        <SectionHeader title="Scan Schedule"/>
-        <CalWidget/>
-      </div>
-    </div>
-
-    {/* Quick actions */}
-    <div className="au4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12}}>
-      {[
-        {label:'Import OpenAPI',  icon:<IcPackage s={20}/>, color:'var(--blue)',   desc:'Upload Swagger/YAML',       action:()=>openModal('openapi')},
-        {label:'Run Load Test',   icon:<IcZap s={20}/>,     color:'var(--orange)', desc:'100 or 1000 virtual users', action:()=>openModal('loadtest')},
-        {label:'Mock Server',     icon:<IcServer s={20}/>,  color:'var(--purple)', desc:'Generate fake APIs',        action:()=>openModal('mockserver')},
-        {label:'Export PDF',      icon:<IcFileText s={20}/>,color:'var(--green)',  desc:'Download security report',  action:()=>openModal('pdf')},
-      ].map((a,i)=>(
-        <button key={i} className="card" onClick={a.action} style={{textAlign:'left',cursor:'pointer',border:'1px solid var(--border)',padding:20}}>
-          <div style={{width:44,height:44,borderRadius:14,background:`${a.color}18`,color:a.color,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:12}}>{a.icon}</div>
-          <div style={{fontSize:13,fontWeight:700,color:'var(--t1)',marginBottom:4}}>{a.label}</div>
-          <div style={{fontSize:11,color:'var(--t3)'}}>{a.desc}</div>
-        </button>
-      ))}
-    </div>
-
-    {/* Alerts + Repos */}
-    <div className="au5" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-      <div className="card">
-        <SectionHeader title="Live Alert Feed" action={<button className="btn-ghost" style={{fontSize:11,height:30,padding:'0 12px'}} onClick={()=>setToast('All marked as read')}><IcCheck s={12}/>Mark Read</button>}/>
-        <div style={{display:'flex',flexDirection:'column',gap:0}}>
-          {ALERTS.slice(0,6).map((a,i)=>(
-            <div key={a.id} style={{display:'flex',alignItems:'flex-start',gap:12,padding:'11px 0',borderBottom:i<5?'1px solid var(--border)':'none'}}>
-              <span className="dot" style={{background:sc(a.type),marginTop:5,boxShadow:`0 0 8px ${sc(a.type)}`}}/>
-              <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:500,color:'var(--t1)',lineHeight:1.4}}>{a.msg}</div>
-                <div style={{fontSize:11,color:'var(--t3)',fontFamily:'var(--mono)',marginTop:3}}>{a.repo} · {a.t}</div>
-              </div>
-              <Tag s={a.type}/>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="card">
-        <SectionHeader title="Monitored Repos" action={<button className="btn-ghost" style={{fontSize:11,height:30,padding:'0 12px'}}>View All</button>}/>
+        <SectionHeader title="Monitored Targets" action={<button className="btn-ghost" style={{fontSize:11,height:30,padding:'0 12px'}}>Refresh</button>}/>
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {REPOS.slice(0,5).map((r,i)=>(
-            <div key={i} className="card-sm" style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 14px'}}>
+          {targets.map((r,i)=>(
+            <div key={r.id || i} className="card-sm" style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 14px'}}>
               <div style={{display:'flex',alignItems:'center',gap:11}}>
                 <div style={{width:34,height:34,borderRadius:9,background:'var(--surface)',border:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--t2)'}}>
-                  <IcGitHub s={15}/>
+                  <IcGlobe s={15}/>
                 </div>
                 <div>
-                  <div style={{fontSize:12,fontWeight:700,color:'var(--t1)'}}>{r.n}</div>
-                  <div style={{fontSize:11,color:'var(--t3)',fontFamily:'var(--mono)',marginTop:1}}>{r.lang} · {r.b}</div>
+                  <div style={{fontSize:12,fontWeight:700,color:'var(--t1)'}}>{r.name || r.url}</div>
+                  <div style={{fontSize:11,color:'var(--t3)',fontFamily:'var(--mono)',marginTop:1}}>{r.url}</div>
                 </div>
               </div>
               <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
-                <Tag s={r.s}/>
-                <span style={{fontSize:10,color:'var(--t3)',fontFamily:'var(--mono)'}}>{r.t}</span>
+                <Tag s={r.status === 'healthy' ? 'safe' : 'crit'}/>
+                <span style={{fontSize:10,color:'var(--t3)',fontFamily:'var(--mono)'}}>Score: {r.security_score}%</span>
               </div>
             </div>
           ))}
+          {targets.length === 0 && <div style={{fontSize:12, color:'var(--t3)'}}>No targets monitored yet.</div>}
         </div>
       </div>
     </div>
   </div>
-);
+  );
+};
 
 /* ============================================================
    VIEW: SCAN HISTORY
 ============================================================ */
 const ViewScanHistory = ({openModal}) => {
-  const [sel,setSel]=useState(null);
+  const [targets, setTargets] = useState([]);
+  const [selId, setSelId] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient.getTargets().then(data => { setTargets(data); setLoading(false); }).catch(e => { setLoading(false); });
+  }, []);
+
+  useEffect(() => {
+    if (selId) {
+      setDetail(null);
+      apiClient.getTarget(selId).then(setDetail).catch(console.error);
+    }
+  }, [selId]);
+
+  if (loading) return <div style={{padding:60, textAlign:'center'}}><Spinner s={30}/></div>;
+
+  const uptimeData = detail?.scan_results?.map(r => ({
+    time: new Date(r.checked_at).toLocaleTimeString(),
+    latency: r.response_time_ms,
+    status: r.status_code
+  })) || [];
+
   return (
     <div style={{display:'flex',flexDirection:'column',gap:18}}>
       <div className="au card" style={{padding:'16px 22px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <div style={{display:'flex',gap:16}}>
-          {[{l:'Total Scans',v:SCAN_HISTORY.length,c:'var(--p)'},{l:'Issues Found',v:SCAN_HISTORY.reduce((a,b)=>a+b.issues,0),c:'var(--red)'},{l:'Avg Score',v:Math.round(SCAN_HISTORY.reduce((a,b)=>a+b.score,0)/SCAN_HISTORY.length)+'%',c:'var(--green)'}].map(s=>(
-            <div key={s.l} style={{display:'flex',alignItems:'center',gap:10,padding:'0 18px',borderRight:'1px solid var(--border)'}}>
-              <div style={{fontSize:20,fontWeight:800,fontFamily:'var(--display)',color:s.c}}>{s.v}</div>
-              <div style={{fontSize:12,color:'var(--t2)',fontWeight:600}}>{s.l}</div>
-            </div>
-          ))}
+          <div style={{display:'flex',alignItems:'center',gap:10,padding:'0 18px'}}>
+            <div style={{fontSize:20,fontWeight:800,fontFamily:'var(--display)',color:'var(--p)'}}>{targets.length}</div>
+            <div style={{fontSize:12,color:'var(--t2)',fontWeight:600}}>Total Targets</div>
+          </div>
         </div>
         <button className="btn-primary" onClick={()=>openModal('scan')}><IcPlay s={14}/>New Scan</button>
       </div>
+
       <div className="card au1" style={{padding:0}}>
-        <div style={{display:'grid',gridTemplateColumns:'110px 1.5fr 100px 80px 80px 100px',padding:'11px 22px',borderBottom:'1px solid var(--border)',fontSize:10,fontWeight:700,color:'var(--t3)',letterSpacing:'.09em',fontFamily:'var(--mono)'}}>
-          <div>SCAN ID</div><div>TARGET</div><div>DATE</div><div>SCORE</div><div>ISSUES</div><div>STATUS</div>
+        <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr',padding:'11px 22px',borderBottom:'1px solid var(--border)',fontSize:10,fontWeight:700,color:'var(--t3)',letterSpacing:'.09em',fontFamily:'var(--mono)'}}>
+          <div>TARGET URL</div><div>SCORE</div><div>STATUS</div><div>LAST CHECKED</div>
         </div>
-        {SCAN_HISTORY.map((s,i)=>(
-          <div key={i} className="tr" onClick={()=>setSel(sel===i?null:i)} style={{display:'grid',gridTemplateColumns:'110px 1.5fr 100px 80px 80px 100px',padding:'14px 22px',borderBottom:i<SCAN_HISTORY.length-1?'1px solid var(--border)':'none',alignItems:'center',cursor:'pointer',background:sel===i?'var(--p-dim2)':'var(--surface)'}}>
-            <div style={{fontSize:12,fontFamily:'var(--mono)',color:'var(--p-lite)'}}>{s.id}</div>
-            <div style={{fontSize:13,fontWeight:600,color:'var(--t1)'}}>{s.target}</div>
-            <div style={{fontSize:11,color:'var(--t3)',fontFamily:'var(--mono)'}}>{s.date.split(' ')[0]}</div>
-            <div style={{fontSize:13,fontWeight:700,fontFamily:'var(--mono)',color:s.score>=90?'var(--green)':s.score>=70?'var(--orange)':'var(--red)'}}>{s.score}%</div>
-            <div style={{fontSize:13,fontFamily:'var(--mono)',color:s.issues>0?'var(--red)':'var(--green)'}}>{s.issues}</div>
-            <span style={{padding:'3px 10px',borderRadius:6,fontSize:11,fontWeight:700,fontFamily:'var(--mono)',background:s.status==='completed'?'hsla(148,72%,54%,.14)':'hsla(348,88%,60%,.14)',color:s.status==='completed'?'var(--green)':'var(--red)',display:'inline-block',width:'fit-content'}}>
+        {targets.map((s,i)=>(
+          <div key={s.id} className="tr" onClick={()=>setSelId(selId===s.id?null:s.id)} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr',padding:'14px 22px',borderBottom:i<targets.length-1?'1px solid var(--border)':'none',alignItems:'center',cursor:'pointer',background:selId===s.id?'var(--p-dim2)':'var(--surface)'}}>
+            <div style={{fontSize:13,fontWeight:600,color:'var(--t1)'}}>{s.url}</div>
+            <div style={{fontSize:13,fontWeight:700,fontFamily:'var(--mono)',color:s.security_score>=90?'var(--green)':s.security_score>=70?'var(--orange)':'var(--red)'}}>{s.security_score}%</div>
+            <span style={{padding:'3px 10px',borderRadius:6,fontSize:11,fontWeight:700,fontFamily:'var(--mono)',background:s.status==='healthy'?'hsla(148,72%,54%,.14)':'hsla(348,88%,60%,.14)',color:s.status==='healthy'?'var(--green)':'var(--red)',display:'inline-block',width:'fit-content'}}>
               {s.status}
             </span>
+            <div style={{fontSize:11,color:'var(--t3)',fontFamily:'var(--mono)'}}>{s.last_checked ? new Date(s.last_checked).toLocaleString() : 'Never'}</div>
           </div>
         ))}
       </div>
-      {sel!==null&&SCAN_HISTORY[sel]&&(
+
+      {selId && detail && (
         <div className="card au" style={{borderColor:'var(--p)'}}>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:16}}>
-            <div style={{fontSize:15,fontWeight:700,fontFamily:'var(--display)'}}>Scan Detail — {SCAN_HISTORY[sel].id}</div>
-            <button className="btn-icon" onClick={()=>setSel(null)}><IcX s={14}/></button>
+            <div style={{fontSize:15,fontWeight:700,fontFamily:'var(--display)'}}>Target Detail — {detail.url}</div>
+            <button className="btn-icon" onClick={()=>setSelId(null)}><IcX s={14}/></button>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12}}>
-            {[{l:'Target',v:SCAN_HISTORY[sel].target},{l:'Score',v:SCAN_HISTORY[sel].score+'%'},{l:'Issues',v:SCAN_HISTORY[sel].issues},{l:'Duration',v:SCAN_HISTORY[sel].duration}].map(x=>(
-              <div key={x.l} className="card-sm">
-                <div style={{fontSize:11,color:'var(--t3)',marginBottom:4}}>{x.l}</div>
-                <div style={{fontSize:14,fontWeight:700,fontFamily:'var(--mono)',color:'var(--t1)'}}>{x.v}</div>
+          
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr', gap:16, marginBottom: 20}}>
+             {/* Latency Chart */}
+             <div className="card-sm">
+                <div style={{fontSize:12, fontWeight:700, marginBottom:8}}>Recent Scan Latency (ms)</div>
+                <div style={{height:150}}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={uptimeData} margin={{top:5,right:0,left:-20,bottom:0}}>
+                      <defs><linearGradient id="gUp" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--p)" stopOpacity={.3}/><stop offset="100%" stopColor="var(--p)" stopOpacity={0}/></linearGradient></defs>
+                      <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fill:'var(--t3)',fontSize:10}}/>
+                      <YAxis axisLine={false} tickLine={false} tick={{fill:'var(--t3)',fontSize:10}}/>
+                      <Tooltip content={<ChartTip/>}/>
+                      <Area type="monotone" dataKey="latency" stroke="var(--p)" strokeWidth={2} fill="url(#gUp)"/>
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+             </div>
+             {/* Status Codes Chart */}
+             <div className="card-sm">
+                <div style={{fontSize:12, fontWeight:700, marginBottom:8}}>Recent Status Codes</div>
+                <div style={{height:150}}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={uptimeData} margin={{top:5,right:0,left:-20,bottom:0}}>
+                      <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{fill:'var(--t3)',fontSize:10}}/>
+                      <YAxis axisLine={false} tickLine={false} tick={{fill:'var(--t3)',fontSize:10}}/>
+                      <Tooltip content={<ChartTip/>}/>
+                      <Bar dataKey="status" fill="var(--green)" opacity={.8} radius={[2,2,0,0]} barSize={8}/>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+             </div>
+          </div>
+
+          <div style={{fontSize:14, fontWeight:700, marginBottom:10}}>Vulnerabilities Found ({detail.findings?.length || 0})</div>
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {detail.findings?.map(f => (
+              <div key={f.id} className="card-sm" style={{borderLeft:`3px solid ${sc(f.severity==='CRITICAL'?'crit':f.severity==='HIGH'?'high':f.severity==='MEDIUM'?'med':'safe')}`}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                  <div>
+                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                      <Tag s={f.severity.toLowerCase().slice(0,4)}/>
+                      <span style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--t3)'}}>{f.engine_source}</span>
+                    </div>
+                    <div style={{fontSize:13,fontWeight:600,color:'var(--t1)'}}>{f.title}</div>
+                    <div style={{fontSize:12,color:'var(--t2)',marginTop:4}}>{f.description}</div>
+                    {f.remediation && <div style={{fontSize:11,color:'var(--t3)',marginTop:6}}>Fix: <span style={{color:'var(--green)'}}>{f.remediation}</span></div>}
+                  </div>
+                </div>
               </div>
             ))}
+            {!detail.findings?.length && <div style={{fontSize:12, color:'var(--t3)'}}>No vulnerabilities detected!</div>}
           </div>
+
         </div>
       )}
     </div>
@@ -1621,7 +1575,7 @@ const NAV_SECTIONS = [
   {label:'MONITORING', items:[
     {id:'health',   label:'API Health',     icon:IcActivity,phase:1},
     {id:'loadtest', label:'Load Testing',   icon:IcZap,     phase:2},
-    {id:'mockserver',label:'Mock Server',   icon:IcServer,  phase:2},
+    {id:'mockserver',label:'JWT Analyzer',   icon:IcServer,  phase:2},
     {id:'changes',  label:'Change Detect',  icon:IcDiff,    phase:2},
   ]},
   {label:'AI FEATURES', items:[
