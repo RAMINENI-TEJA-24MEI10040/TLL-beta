@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from typing import List
 
 from database import get_db
@@ -12,6 +13,8 @@ from core.health import check_health, check_tls
 import httpx
 from core.headers import analyze_headers
 from urllib.parse import urlparse
+from core.pdf_generator import generate_target_pdf
+from fastapi.responses import Response
 
 router = APIRouter()
 
@@ -87,3 +90,18 @@ async def delete_target(target_id: int, db: AsyncSession = Depends(get_db)):
     await db.delete(target)
     await db.commit()
     return {"status": "deleted"}
+
+@router.get("/targets/{target_id}/report/pdf")
+async def get_target_pdf_report(target_id: int, db: AsyncSession = Depends(get_db)):
+    stmt = select(Target).options(
+        selectinload(Target.scan_results),
+        selectinload(Target.findings)
+    ).where(Target.id == target_id)
+    result = await db.execute(stmt)
+    target = result.scalar_one_or_none()
+    
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found")
+        
+    pdf_bytes = generate_target_pdf(target, target.scan_results, target.findings)
+    return Response(content=pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="report_{target_id}.pdf"'})

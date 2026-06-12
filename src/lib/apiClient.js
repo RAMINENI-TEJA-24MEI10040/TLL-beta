@@ -59,4 +59,31 @@ export const apiClient = {
     method: 'POST',
     body: JSON.stringify({ url, tokens }),
   }),
+  runLoadTest: (url, rps, duration_sec) => fetchApi('/security/loadtest', {
+    method: 'POST',
+    body: JSON.stringify({ url, rps, duration_sec }),
+  }),
+  downloadPdf: async (targetId) => {
+    const url = `${BASE_URL}/targets/${targetId}/report/pdf`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      let errorMessage = `API Error: ${response.status}`;
+      try {
+        const errData = await response.json();
+        errorMessage = errData.detail || errorMessage;
+      } catch (e) {
+        // Not JSON
+      }
+      throw new Error(errorMessage);
+    }
+    
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const errData = await response.json();
+      throw new Error(errData.detail || "Unexpected JSON response instead of PDF");
+    }
+    
+    return await response.blob();
+  }
 };

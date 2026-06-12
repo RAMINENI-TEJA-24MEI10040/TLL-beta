@@ -33,6 +33,22 @@ alembic upgrade head
 
 ---
 
+## 🔒 CORS Configuration for the Frontend
+By default, the FastAPI application will not accept requests from a frontend running on a different port. If you are running the API Guardian React frontend (which typically runs on `http://localhost:5173`), you must add the CORS middleware in `main.py` before starting the server:
+
+```python
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+---
+
 ## 🏃 Running the Application
 
 The architecture consists of two main processes that must run concurrently: the FastAPI web server and the ARQ background worker. 

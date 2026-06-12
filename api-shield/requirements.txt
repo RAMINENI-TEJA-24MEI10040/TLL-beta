@@ -12,3 +12,4 @@ pydantic[email]
 pytest
 pytest-asyncio
 respx
+reportlab

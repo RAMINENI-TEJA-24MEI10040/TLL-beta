@@ -47,21 +47,65 @@ Leveraging the `claude-sonnet-4` model, API Guardian acts as an intelligent assi
 
 ## 🏗️ Architecture & Tech Stack
 
-API Guardian is built for speed and seamless UX:
+API Guardian is built for speed, security, and seamless UX across a robust microservices architecture:
 
 | Layer | Technology | Description |
 | :--- | :--- | :--- |
-| **Frontend Framework** | React 18 + Vite | Ensures lightning-fast HMR and an optimized production build. |
+| **Frontend UI** | React 18 + Vite | Ensures lightning-fast HMR and an optimized production build. |
+| **Backend Engine** | FastAPI (Python) | High-performance asynchronous API server for running security engines and load tests. |
+| **Database** | PostgreSQL + asyncpg | Relational database for storing targets, scan history, findings, and configurations. |
+| **Message Broker / Cache** | Redis + ARQ | Powers background workers for continuous monitoring without blocking the main web server. |
 | **Data Visualization** | Recharts | Renders complex latency, uptime, and threat distribution metrics smoothly. |
-| **Styling Engine** | Custom CSS Variables | A lightweight, zero-dependency theme engine supporting dynamic Light/Dark modes and custom hue switching. |
-| **AI Integration** | Anthropic API | Handles complex language tasks, powered by Claude. |
+| **Styling Engine** | Custom CSS Variables | A lightweight, zero-dependency theme engine supporting dynamic Light/Dark modes. |
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-* Node.js (v16.0 or higher)
-* NPM or Yarn
+* **Node.js** (v18.0 or higher) & NPM
+* **Python** (3.9 or higher)
+* **Docker & Docker Compose** (for running PostgreSQL and Redis)
 
-### Local Installation
+### Quick Start Guide
+
+#### 1. Start the Infrastructure
+```bash
+cd api-shield
+docker-compose up -d
+```
+*Ensure both Postgres and Redis containers are healthy (`docker-compose ps`).*
+
+#### 2. Start the Backend API (FastAPI)
+Open a new terminal window:
+```bash
+cd api-shield
+python -m venv venv
+# On Windows: venv\Scripts\activate
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+alembic upgrade head
+uvicorn main:app --reload
+```
+*The API is now running at `http://localhost:8000`.*
+
+#### 3. Start the Background Worker (ARQ)
+Open another terminal window to run the background scanner:
+```bash
+cd api-shield
+python -m venv venv
+# On Windows: venv\Scripts\activate
+source venv/bin/activate
+# Activate your venv again
+export PYTHONPATH="." # (Or set PYTHONPATH=. on Windows)
+arq workers.engine.WorkerSettings
+```
+
+#### 4. Start the Frontend Dashboard (React)
+Open a final terminal window:
+```bash
+npm install
+npm run dev
+```
+*Access the API Guardian Dashboard at `http://localhost:5173`.*

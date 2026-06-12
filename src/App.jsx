@@ -497,6 +497,64 @@ const AIModal = ({title,icon,prompt,close}) => {
   );
 };
 
+
+/* ============================================================
+   ADD TARGET MODAL
+============================================================ */
+const AddTargetModal = ({close,setToast}) => {
+  const [url, setUrl] = useState('');
+  const [name, setName] = useState('');
+  const [interval, setInterval] = useState('15m');
+  const [loading, setLoading] = useState(false);
+
+  const save = async () => {
+    if (!url) return;
+    setLoading(true);
+    try {
+      await apiClient.createTarget({url, name: name||url, monitor_interval: interval});
+      setToast('Target added and scan triggered!');
+      close();
+    } catch(err) {
+      setToast('Failed to add: ' + err.message);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&close()}>
+      <div className="modal" style={{maxWidth:500}}>
+        <div style={{padding:'22px 28px',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div style={{fontSize:16,fontWeight:800,fontFamily:'var(--display)'}}>Add Target API</div>
+          <button className="btn-icon" onClick={close}><IcX s={15}/></button>
+        </div>
+        <div style={{padding:28}}>
+          <div style={{marginBottom:15}}>
+            <div className="sec-label">API URL</div>
+            <input className="login-input" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://api.example.com" />
+          </div>
+          <div style={{marginBottom:15}}>
+            <div className="sec-label">Friendly Name (Optional)</div>
+            <input className="login-input" value={name} onChange={e=>setName(e.target.value)} placeholder="Production API" />
+          </div>
+          <div style={{marginBottom:20}}>
+            <div className="sec-label">Monitor Interval</div>
+            <select className="login-input" value={interval} onChange={e=>setInterval(e.target.value)}>
+              <option value="5m">Every 5 minutes</option>
+              <option value="15m">Every 15 minutes</option>
+              <option value="30m">Every 30 minutes</option>
+              <option value="1h">Every 1 hour</option>
+            </select>
+          </div>
+          <div style={{display:'flex',gap:12}}>
+            <button className="btn-primary" onClick={save} disabled={!url||loading} style={{flex:1,height:44}}>{loading?'Adding...':'Add Target'}</button>
+            <button className="btn-ghost" onClick={close} style={{flex:1,height:44}}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ============================================================
    SCAN MODAL
 ============================================================ */
@@ -570,15 +628,30 @@ const PDFModal = ({close,setToast}) => {
   const [selected,setSelected]=useState('full');
   const [gen,setGen]=useState(false);
   const [done,setDone]=useState(false);
+  
   const opts=[
     {id:'full',label:'Full Security Report',desc:'All vulnerabilities, endpoints, recommendations'},
-    {id:'exec',label:'Executive Summary',desc:'High-level metrics & risk overview (2 pages)'},
-    {id:'vuln',label:'Vulnerability Report',desc:'CVEs, OWASP categories, fix suggestions'},
-    {id:'comp',label:'Compliance Report',desc:'OWASP API Top 10, ISO 27001 alignment'},
   ];
-  const generate=()=>{
+
+  const generate=async()=>{
+    if (!targetId) { setToast('Select a target first'); return; }
     setGen(true);
-    setTimeout(()=>{setGen(false);setDone(true);setToast('PDF report downloaded!');},2200);
+    try {
+      const blob = await apiClient.downloadPdf(targetId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `security_report_${targetId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      setToast('PDF report downloaded!');
+      setDone(true);
+    } catch(err) {
+      setToast('Failed: ' + err.message);
+    }
+    setGen(false);
   };
   return (
     <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&close()}>
@@ -590,7 +663,15 @@ const PDFModal = ({close,setToast}) => {
         <div style={{padding:28}}>
           <div className="sec-label">Report Type</div>
           <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:24}}>
+            
+            <div style={{marginBottom:15}}>
+              <div className="sec-label">Select Target</div>
+              <select className="login-input" value={targetId} onChange={e=>setTargetId(e.target.value)}>
+                {targets.map(t=><option key={t.id} value={t.id}>{t.name||t.url}</option>)}
+              </select>
+            </div>
             {opts.map(o=>(
+
               <div key={o.id} onClick={()=>setSelected(o.id)} style={{display:'flex',alignItems:'center',gap:14,padding:'14px 18px',borderRadius:'var(--r-lg)',border:`1px solid ${selected===o.id?'var(--p)':'var(--border)'}`,background:selected===o.id?'var(--p-dim2)':'var(--surface2)',cursor:'pointer',transition:'all .2s'}}>
                 <div style={{width:18,height:18,borderRadius:'50%',border:`2px solid ${selected===o.id?'var(--p)':'var(--border2)'}`,background:selected===o.id?'var(--p)':'none',flexShrink:0}}/>
                 <div>
@@ -704,7 +785,7 @@ const OpenAPIModal = ({close,setToast}) => {
 /* ============================================================
    LOAD TESTING MODAL
 ============================================================ */
-const LoadTestModal = ({close,setToast}) => {
+const SecurityToolsModal = ({close,setToast}) => {
   const [mode, setMode] = useState('bola');
   const [url, setUrl] = useState('http://localhost:3000/api/users/123');
   const [token1, setToken1] = useState('');
@@ -784,6 +865,74 @@ const LoadTestModal = ({close,setToast}) => {
   );
 };
 
+
+/* ============================================================
+   LOAD TEST MODAL
+============================================================ */
+const LoadTestModal = ({close,setToast}) => {
+  const [url, setUrl] = useState('');
+  const [rps, setRps] = useState(10);
+  const [duration, setDuration] = useState(10);
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState(null);
+  const [targets, setTargets] = useState([]);
+
+  useEffect(() => {
+    apiClient.getTargets().then(t=>{setTargets(t); if(t.length>0) setUrl(t[0].url);}).catch(()=>{});
+  }, []);
+
+  const runTest = async () => {
+    setLoading(true); setResults(null);
+    try {
+      const data = await apiClient.runLoadTest(url, rps, duration);
+      setResults(data.results);
+      setToast('Load Test Complete');
+    } catch(err) {
+      setToast('Test Failed: ' + err.message);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="modal-bg" onClick={e=>e.target===e.currentTarget&&close()}>
+      <div className="modal" style={{maxWidth:600}}>
+        <div style={{padding:'22px 28px',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div style={{fontSize:16,fontWeight:800,fontFamily:'var(--display)'}}>Run Load Test</div>
+          <button className="btn-icon" onClick={close}><IcX s={15}/></button>
+        </div>
+        <div style={{padding:28}}>
+          <div style={{marginBottom:15}}>
+            <div className="sec-label">Select Target URL</div>
+            <select className="login-input" value={url} onChange={e=>setUrl(e.target.value)}>
+                {targets.map(t=><option key={t.id} value={t.url}>{t.url}</option>)}
+            </select>
+          </div>
+          <div style={{display:'flex',gap:15,marginBottom:20}}>
+            <div style={{flex:1}}>
+              <div className="sec-label">RPS (Max 50)</div>
+              <input type="number" max={50} min={1} className="login-input" value={rps} onChange={e=>setRps(Number(e.target.value))} />
+            </div>
+            <div style={{flex:1}}>
+              <div className="sec-label">Duration Sec (Max 30)</div>
+              <input type="number" max={30} min={1} className="login-input" value={duration} onChange={e=>setDuration(Number(e.target.value))} />
+            </div>
+          </div>
+          {results && (
+             <div style={{padding:16,background:'var(--p-dim2)',border:'1px solid var(--p-dim)',borderRadius:8,marginBottom:20,fontSize:13,color:'var(--t2)',lineHeight:1.6}}>
+               <div><strong>Total Requests:</strong> {results.total_requests}</div>
+               <div><strong>Successful:</strong> {results.successful}</div>
+               <div><strong>Failed:</strong> {results.failed}</div>
+               <div><strong>P50 Latency:</strong> {results.p50_latency_ms}ms</div>
+               <div><strong>P95 Latency:</strong> {results.p95_latency_ms}ms</div>
+               <div><strong>Duration:</strong> {results.duration_sec}s</div>
+             </div>
+          )}
+          <button className="btn-primary" onClick={runTest} disabled={loading||!url} style={{width:'100%',height:44,justifyContent:'center'}}>{loading?'Running...':'Execute Load Test'}</button>
+        </div>
+      </div>
+    </div>
+  );
+};
 /* ============================================================
    MOCK SERVER MODAL
 ============================================================ */
@@ -879,7 +1028,10 @@ const ViewDashboard = ({setToast,openModal}) => {
       </div>
       <div style={{display:'flex',gap:10}}>
         <button className="btn-ghost" onClick={()=>openModal('pdf')}><IcDownload s={14}/>Export Report</button>
-        <button className="btn-primary" onClick={()=>openModal('scan')}><IcPlay s={14}/>New Scan</button>
+        <div style={{display:'flex',gap:10}}>
+          <button className="btn-ghost" onClick={()=>openModal('add_target')}><IcZap s={14}/>Add Target</button>
+          <button className="btn-primary" onClick={()=>openModal('scan')}><IcPlay s={14}/>New Scan</button>
+        </div>
       </div>
     </div>
 
@@ -1618,7 +1770,7 @@ const Sidebar = ({view,setView,openModal}) => {
         <div key={sec.label} style={{marginBottom:6}}>
           <div className="sec-label">{sec.label}</div>
           {sec.items.map(item=>(
-            <button key={item.id} className={`nav-item${view===item.id?' active':''}`} onClick={()=>handleItem(item)}>
+            <button key={item.id} className={`nav-item${view===item.id?' active':''}`} onClick={()=>{if(item.id==='docs'||item.id==='settings'){setView(item.id);return;} handleItem(item);}}>
               <item.icon s={15}/>
               {item.label}
               {item.badge&&alertCount>0&&<span className="badge">{alertCount}</span>}
@@ -1636,8 +1788,8 @@ const Sidebar = ({view,setView,openModal}) => {
       </div>
       <div style={{flex:1}}/>
       <div style={{borderTop:'1px solid var(--border)',paddingTop:12}}>
-        {[{icon:IcEye,l:'Documentation'},{icon:IcSettings,l:'Settings'}].map(x=>(
-          <button key={x.l} className="nav-item" style={{opacity:.75}}><x.icon s={14}/>{x.l}</button>
+        {[{id:'docs',icon:IcEye,l:'Documentation'},{id:'settings',icon:IcSettings,l:'Settings'}].map(x=>(
+          <button key={x.l} className={`nav-item${view===x.id?' active':''}`} onClick={()=>setView(x.id)}><x.icon s={14}/>{x.l}</button>
         ))}
         <div style={{display:'flex',alignItems:'center',gap:10,padding:'9px 8px',marginTop:6}}>
           <div style={{width:32,height:32,borderRadius:'var(--r-pill)',background:'var(--p-dim)',color:'var(--p-lite)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:800,fontSize:12,border:'1px solid var(--p-dim)',flexShrink:0,fontFamily:'var(--display)'}}>KS</div>
@@ -2341,6 +2493,51 @@ h1, h2, h3, h4, .lp-au1 {
 /* ============================================================
    ROOT APP
 ============================================================ */
+
+/* ============================================================
+   DOCS & SETTINGS VIEWS
+============================================================ */
+const ViewDocs = () => {
+  return (
+    <div className="fade-in" style={{height:'100%',display:'flex',flexDirection:'column'}}>
+      <div style={{fontSize:24,fontWeight:800,color:'var(--t1)',marginBottom:16,fontFamily:'var(--display)'}}>API Documentation</div>
+      <div style={{flex:1,border:'1px solid var(--border)',borderRadius:12,overflow:'hidden',background:'#fff'}}>
+        <iframe src="http://localhost:8000/docs" style={{width:'100%',height:'100%',border:'none'}} title="Swagger Docs" />
+      </div>
+    </div>
+  );
+};
+
+const ViewSettings = () => {
+  return (
+    <div className="fade-in" style={{maxWidth:800,margin:'0 auto'}}>
+      <div style={{fontSize:24,fontWeight:800,color:'var(--t1)',marginBottom:6,fontFamily:'var(--display)'}}>Global Settings</div>
+      <div style={{fontSize:14,color:'var(--t3)',marginBottom:24}}>Configure your API Guardian preferences.</div>
+      
+      <div className="card" style={{marginBottom:16}}>
+        <div style={{fontSize:16,fontWeight:800,marginBottom:16}}>Alert Notifications</div>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
+          <input type="checkbox" defaultChecked /> <span style={{fontSize:14,color:'var(--t2)'}}>Email Alerts for Critical Findings</span>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <input type="checkbox" defaultChecked /> <span style={{fontSize:14,color:'var(--t2)'}}>Slack Webhook Notifications</span>
+        </div>
+      </div>
+      
+      <div className="card">
+        <div style={{fontSize:16,fontWeight:800,marginBottom:16}}>Data Retention</div>
+        <div className="sec-label">Keep scan history for</div>
+        <select className="login-input" style={{maxWidth:300}}>
+          <option>30 Days</option>
+          <option>90 Days</option>
+          <option>1 Year</option>
+        </select>
+        <button className="btn-primary" style={{marginTop:20}}>Save Settings</button>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   // 'landing' → 'login' → 'dashboard'
   const [page,setPage]=useState('landing');
@@ -2418,6 +2615,8 @@ export default function App() {
           <span style={{color:'var(--t1)',fontWeight:700}}>{VIEW_LABEL[view]||view.toUpperCase()}</span>
         </div>
         <main style={{flex:1,padding:'24px',overflowY:'auto',maxWidth:1440,width:'100%'}}>
+          {view==='docs'     &&<ViewDocs/>}
+          {view==='settings' &&<ViewSettings/>}
           {view==='dash'     &&<ViewDashboard  setToast={showToast}  openModal={openModal}/>}
           {view==='history'  &&<ViewScanHistory openModal={openModal}/>}
           {view==='eps'      &&<ViewEndpoints   openModal={openModal}/>}
@@ -2440,9 +2639,11 @@ export default function App() {
         </main>
       </div>
       {/* Modals */}
+      {modal==='add_target'&&<AddTargetModal close={closeModal} setToast={showToast}/>}
       {modal==='scan'       &&<ScanModal       close={closeModal} setToast={showToast}/>}
       {modal==='pdf'        &&<PDFModal        close={closeModal} setToast={showToast}/>}
       {modal==='openapi'    &&<OpenAPIModal    close={closeModal} setToast={showToast}/>}
+      {modal==='security'   &&<SecurityToolsModal close={closeModal} setToast={showToast}/>}
       {modal==='loadtest'   &&<LoadTestModal   close={closeModal} setToast={showToast}/>}
       {modal==='mockserver' &&<MockServerModal close={closeModal} setToast={showToast}/>}
       {modal==='ai'         &&<AIModal title={modalData.title} icon={modalData.icon} prompt={modalData.prompt} close={closeModal}/>}
